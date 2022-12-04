@@ -1,11 +1,8 @@
-/**
- *Submitted for verification at polygonscan.com on 2022-07-05
-*/
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.0;
-// 2021-08-31 version
+pragma solidity 0.8.17;
+// 2022-12-04 version
 
 // интерфейс
 
@@ -29,36 +26,50 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
 
 
 
-
-abstract contract Ownable  {
-    address public owner;
+abstract contract Ownable is Context {
+    address private _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
-
-    constructor ()  {
-        
-        owner = msg.sender;
-        emit OwnershipTransferred(address(0), owner);
+    constructor() {
+        _transferOwnership(_msgSender());
     }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    
 
     /**
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(owner == msg.sender, "Ownable: caller is not the owner");
+        _checkOwner();
         _;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
     }
 
     /**
@@ -69,8 +80,7 @@ abstract contract Ownable  {
      * thereby removing any functionality that is only available to the owner.
      */
     function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(owner, address(0));
-        owner = address(0);
+        _transferOwnership(address(0));
     }
 
     /**
@@ -79,8 +89,17 @@ abstract contract Ownable  {
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
 
@@ -191,7 +210,7 @@ contract MyStream is Ownable, Pausable{
     //Mappings
     
     mapping(uint256 => Stream) private streams; 
-    uint256 public contractBalance;
+    uint256 public contractFeeBalance;
     
     //Modifiers
     
@@ -199,7 +218,7 @@ contract MyStream is Ownable, Pausable{
     modifier onlySenderOrRecipient(uint256 streamId) {
         require(
             msg.sender == streams[streamId].sender || msg.sender == streams[streamId].recipient,
-            "caller is not the sender or the recipient of the stream"
+            "caller is not the sender/recipient"
         );
         _;
     }
@@ -314,13 +333,13 @@ contract MyStream is Ownable, Pausable{
             startTime = block.timestamp;
         }
         
-        require(recipient != address(0x00), "stream to the zero address");
+        require(recipient != address(0), "stream to the zero address");
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
         require(deposit != 0, "deposit is zero");
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
-        require (accept[tokenAddress], "token not accepted ");
+        //require (accept[tokenAddress], "token not accepted ");
         require (blockTime == 0 || blockTime <= stopTime, "blockTime is not zero or too large");
 
         CreateStreamLocalVars memory vars;
@@ -345,7 +364,7 @@ contract MyStream is Ownable, Pausable{
         
         else{
             rem = deposit % vars.duration;
-            contractBalance = contractBalance + rem;
+            contractFeeBalance = contractFeeBalance + rem;
         }
 
         vars.ratePerSecond = deposit/ vars.duration;
@@ -371,10 +390,9 @@ contract MyStream is Ownable, Pausable{
 
         /* Increment the next stream id. */
         unchecked{
-        nextStreamId = nextStreamId + uint256(1);
+        nextStreamId = nextStreamId + 1;
         }
 
-        //require(IERC20(tokenAddress).transferFrom(msg.sender, address(this), rem), "token transfer failure");
         require(IERC20(tokenAddress).transferFrom(msg.sender, address(this), deposit), "token transfer failure");
         
         emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime, blockTime, senderCancel, recipientCancel);
@@ -554,36 +572,21 @@ contract MyStream is Ownable, Pausable{
     
      // Admin functions
      
-   //function withdrawForHolders (address _tokenAddress, uint256 _amount) external onlyOwner{
-        //require(balancesOfHolders[msg.sender] >= _amount);
-        //balancesOfHolders[msg.sender] = balancesOfHolders[msg.sender] - _amount;
-        //require(IERC20(_tokenAddress).transfer(msg.sender, _amount), "Holders transfer failure");
-    //} 
-   
-   
-    // work with sender remainders
-    function getBalanceOfThisContract() external view returns (uint){
-        return contractBalance;
-    }
     
-    function withdrawForHolders(address _tokenAddress, uint256 _amount, address _reciver) external onlyOwner returns (bool){
-        require (_amount <= contractBalance);
+    
+    
+    function withdrawFeeForHolders(address _tokenAddress, uint256 _amount, address _reciver) external onlyOwner returns (bool){
+        require (_amount <= contractFeeBalance);
         require(_tokenAddress != address(0) && _reciver != address(0));
-        contractBalance = contractBalance - _amount;
+        unchecked{
+        contractFeeBalance = contractFeeBalance - _amount;
+        }
         require(IERC20(_tokenAddress).transfer(_reciver, _amount), "token transfer failure");
         emit remFromContract(_amount, _reciver);
         return true;
     }
     
-    mapping(address => bool) public accept;
     
-    function addNewToken(address _token) external onlyOwner{
-        accept[_token] = true;
-    }
-    
-    function removeToken(address _token) external onlyOwner{
-        accept[_token] = false;
-    }
     
     
     
