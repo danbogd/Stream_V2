@@ -42,6 +42,11 @@ describe("nick", function () {//
 
   })  
 
+  it("should be revert with message", async function() {
+    await nick.connect(acc2).setNick("myNick_ACC2");
+    await expect(nick.connect(acc1).changeNick("myNick_ACC2","myNick_ACC3")).to.be.revertedWith('Call must come from owner');
+
+  }) 
   
        
   
