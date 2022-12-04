@@ -6,6 +6,7 @@
 // https://polygonscan.com/address/0x2adFB66eDDDeeb81Dfb8f38C5e3bfA0b73a47Ea1#code
 pragma solidity ^0.8.17;
 
+import "hardhat/console.sol";
 
 contract nick{
 
