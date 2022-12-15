@@ -92,6 +92,7 @@ describe("create Stream", function () {
       
       tokenAddress = tx2.address
       await dai.mint(sender.address, deposit)
+      await dai.mint(owner.address, deposit)
       const balance = await dai.balanceOf(sender.address)
       //console.log (balance)
 
@@ -103,22 +104,44 @@ describe("create Stream", function () {
       const tx = await myStream.changeFee(10);
       //console.log(tx.blockNumber);
       ts =  await get(tx.blockNumber);
-      console.log("Curent timestamp :",ts);
+      //console.log("Curent timestamp :",ts);
 
-     
-     
+       
       
     })
 
-    it("createStream", async function() {
+    it("createStream() function emit event CreateStream", async function() {
 
         var startTime = ts + 10;
         var endTime = ts + 70;
        await dai.connect(sender).approve(myStream.address, deposit)
-       await expect( myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)).to.emit(myStream, "CreateStream");
-      
-       
-       
-
+       await expect( myStream.connect(sender).
+       createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true))
+       .to.emit(myStream, "CreateStream").withArgs(1, sender.address, recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true );
+         
     })
+
+
+    it("createStream() return ID", async function() {
+
+        var startTime = ts + 10;
+        var endTime = ts + 70;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await dai.approve(myStream.address, deposit)
+       await myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+      // await myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+       var res1 = await myStream.createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+       var id = await myStream.nextStreamId() - 1
+       expect(id).to.eq(2)
+       
+      
+         
+    })
+
 })
+
+    
+    
+
+
+
