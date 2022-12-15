@@ -138,6 +138,49 @@ describe("create Stream", function () {
          
     })
 
+    it("createStream() wrong start time", async function() {
+
+        var startTime = ts + 70;
+        var endTime = ts + 10;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await expect(myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)).to.be.reverted
+      
+     
+    })
+
+    it("createStream() wrong end time", async function() {
+
+        var startTime = ts + 10;
+        var endTime = ts + 5;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await expect(myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)).to.be.reverted
+      
+     
+    })
+
+    it("cancelStream() by sender", async function() {
+
+        var startTime = ts + 10;
+        var endTime = ts + 70;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+       var id = await myStream.nextStreamId() - 1
+       
+             
+       await network.provider.send("evm_increaseTime", [30])// увеличение времени
+       // await network.provider.send("evm_setNextBlockTimestamp", [1625097600])
+       // await network.provider.send("evm_mine") // this one will have 2021-07-01 12:00 AM as its timestamp, no matter what the previous block has
+         
+       var tx = await myStream.connect(sender).cancelStream(id)
+       const rc = await tx.wait(); // 0ms, as tx is already confirmed
+       const event = rc.events.find(event => event.event === 'CancelStream');
+        //const [from, to, value] = event.args;
+        //console.log(from, to, value);
+       console.log (event.args.cancelTime)
+       const cancelTime = event.args.cancelTime
+       expect(cancelTime).to.eq(ts + 32)
+    })
+
 })
 
     
