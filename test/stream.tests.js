@@ -70,6 +70,7 @@ describe("create Stream", function () {
     let owner // данные переменные доступны для всех тестов
     let sender 
     let recepient 
+    let user
     let myStream
     let ts
     let dai
@@ -84,7 +85,7 @@ describe("create Stream", function () {
     }     
   
     beforeEach(async function() {// перед каждым тестом
-      [owner, recepient, sender] = await ethers.getSigners()
+      [owner, recepient, sender, user] = await ethers.getSigners()
 
       const DAI = await ethers.getContractFactory("DAI", owner);
       dai = await DAI.deploy("Dai", "DAI", 18);
@@ -176,9 +177,40 @@ describe("create Stream", function () {
        const event = rc.events.find(event => event.event === 'CancelStream');
         //const [from, to, value] = event.args;
         //console.log(from, to, value);
-       console.log (event.args.cancelTime)
+       //console.log (event.args.cancelTime)
        const cancelTime = event.args.cancelTime
        expect(cancelTime).to.eq(ts + 32)
+    })
+
+    it("cancelStream() by recepient", async function() {
+
+        var startTime = ts + 10;
+        var endTime = ts + 70;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+       var id = await myStream.nextStreamId() - 1
+                   
+       await network.provider.send("evm_increaseTime", [20])// увеличение времени
+               
+       var tx = await myStream.connect(recepient).cancelStream(id)
+       const rc = await tx.wait(); // 2 sec
+       const event = rc.events.find(event => event.event === 'CancelStream');
+       const cancelTime = event.args.cancelTime
+       expect(cancelTime).to.eq(ts + 22)
+    })
+
+    it("cancelStream() by any user will revert", async function() {
+
+        var startTime = ts + 10;
+        var endTime = ts + 70;
+       await dai.connect(sender).approve(myStream.address, deposit)
+       await myStream.connect(sender).createStream(recepient.address, deposit, tokenAddress, startTime, endTime, 0, true, true)
+       var id = await myStream.nextStreamId() - 1
+                   
+       await network.provider.send("evm_increaseTime", [20])// увеличение времени
+               
+       await expect(myStream.connect(user).cancelStream(id)).to.be.reverted
+       
     })
 
 })
