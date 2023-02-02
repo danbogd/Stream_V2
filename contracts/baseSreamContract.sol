@@ -1,8 +1,10 @@
 
 // SPDX-License-Identifier: MIT
 
+// 0xa5126e43AB921F3fAaf0Ce4A3a6a8bE4D63cbf5b Polygon
+
 pragma solidity 0.8.17;
-// 2022-12-04 version
+// 2023-01-31 version
 
 // интерфейс
 
@@ -203,7 +205,7 @@ contract MyStream is Ownable, Pausable{
     
      constructor()  {
        
-        fee = 10;
+        fee = 100;
         nextStreamId = 1;
     }
     
@@ -279,6 +281,7 @@ contract MyStream is Ownable, Pausable{
         uint256 blockTime,
         bool senderCancel,
         bool recipientCancel
+       
     );
     
     event CancelStream(
@@ -294,6 +297,7 @@ contract MyStream is Ownable, Pausable{
         uint256 indexed streamId, 
         address indexed recipient, 
         uint256 amount
+        
     );
     
     
@@ -314,10 +318,7 @@ contract MyStream is Ownable, Pausable{
         uint256 newFee
     );
     
-    event newCompanyAccount(
-        address companyAccount
-    );
-    
+        
     event remFromContract(
         uint256 amount,
         address indexed reciver
@@ -328,7 +329,7 @@ contract MyStream is Ownable, Pausable{
     //address constant tokenAddress = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;// DAI CONTRACT IN  POLIGON
     
     function createStream(address recipient, uint256 deposit, address tokenAddress, uint256 startTime, uint256 stopTime, uint256 blockTime, bool senderCancel, bool recipientCancel) whenNotPaused external  returns (uint256){
-        
+        // deposit = 101
         if (startTime == 0){
             startTime = block.timestamp;
         }
@@ -392,10 +393,11 @@ contract MyStream is Ownable, Pausable{
         unchecked{
         nextStreamId = nextStreamId + 1;
         }
+        uint256 feeAmount = deposit * fee;
 
         require(IERC20(tokenAddress).transferFrom(msg.sender, address(this), deposit), "token transfer failure");
         
-        emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime, blockTime, senderCancel, recipientCancel);
+        emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime, blockTime, senderCancel, recipientCancel, feeAmount);
         return streamId;
     }
     
@@ -585,7 +587,6 @@ contract MyStream is Ownable, Pausable{
         emit remFromContract(_amount, _reciver);
         return true;
     }
-    
     
     
     
